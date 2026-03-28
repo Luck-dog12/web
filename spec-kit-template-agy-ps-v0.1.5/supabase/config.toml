@@ -1,0 +1,10 @@
+project_id = "your-project-id"
+
+[functions.create-paypal-order]
+verify_jwt = true
+
+[functions.capture-paypal-order]
+verify_jwt = true
+
+[functions.get-playback]
+verify_jwt = true

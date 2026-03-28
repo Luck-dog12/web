@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum OrderStatus {
+  pending
+  paid
+  failed
+  canceled
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  orders       Order[]
+  entitlements Entitlement[]
+  playback     PlaybackToken[]
+}
+
+model Course {
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  cuisine       String?
+  difficulty    String?
+  priceCents    Int
+  priceCentsUsd Int?
+  priceCentsEur Int?
+  currency      String   @default("USD")
+  coverImageUrl String?
+  isPublished   Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  videos        Video[]
+  orders        Order[]
+  entitlements  Entitlement[]
+  playback      PlaybackToken[]
+}
+
+model Video {
+  id              String   @id @default(cuid())
+  courseId        String
+  title           String
+  durationSeconds Int?
+  sourceUrl       String
+  createdAt       DateTime @default(now())
+
+  course          Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  userId            String
+  courseId          String
+  amountCents       Int
+  currency          String      @default("USD")
+  status            OrderStatus @default(pending)
+  provider          String      @default("mock")
+  providerSessionId String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course            Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+model Entitlement {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  grantedAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+}
+
+model PlaybackToken {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([courseId])
+}
