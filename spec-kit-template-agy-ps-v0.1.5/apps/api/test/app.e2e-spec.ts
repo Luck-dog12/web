@@ -6,6 +6,8 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/common/prisma/prisma.service';
 
+jest.setTimeout(15000);
+
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
@@ -29,6 +31,12 @@ describe('AppController (e2e)', () => {
     );
     await app.init();
     prisma = app.get(PrismaService);
+  });
+
+  afterEach(async () => {
+    if (app) {
+      await app.close();
+    }
   });
 
   it('/health (GET)', () => {

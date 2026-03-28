@@ -15,7 +15,10 @@ export function getAppEnv(): AppEnv {
     .map((item) => item.trim())
     .filter(Boolean);
   const sessionSecret = process.env.SESSION_SECRET ?? 'dev-session-secret';
-  const databaseUrl = process.env.DATABASE_URL ?? 'file:./dev.db';
+  const databaseUrl =
+    process.env.DATABASE_URL ??
+    process.env.DIRECT_URL ??
+    'postgresql://postgres:postgres@127.0.0.1:5432/spec_kit?schema=public';
   const redisUrl = process.env.REDIS_URL || undefined;
 
   return { port, webBaseUrl, webBaseUrls, sessionSecret, databaseUrl, redisUrl };
