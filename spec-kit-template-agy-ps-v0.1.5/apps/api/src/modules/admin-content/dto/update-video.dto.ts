@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdateVideoDto {
   @IsOptional()
@@ -7,7 +7,8 @@ export class UpdateVideoDto {
 
   @IsOptional()
   @IsString()
-  sourceUrl?: string;
+  @IsIn(['public', 'signed'])
+  playbackPolicy?: 'public' | 'signed';
 
   @IsOptional()
   @IsInt()

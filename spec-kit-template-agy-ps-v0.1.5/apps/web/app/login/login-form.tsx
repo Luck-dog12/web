@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { apiPost } from '../../lib/api';
+import { sanitizeNextPath } from '../../lib/navigation/safe-next-path';
 
 type Mode = 'login' | 'register';
 
@@ -25,7 +26,7 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
       } else {
         await apiPost('/auth/register', { email, password }, { credentials: 'include' });
       }
-      router.replace(nextPath);
+      router.replace(sanitizeNextPath(nextPath, '/'));
     } catch (e) {
       setError(e instanceof Error ? e.message : '登录失败');
     } finally {
@@ -37,8 +38,13 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
     <div className="min-h-screen bg-[var(--bg-base)] px-6 py-10 text-[var(--text-primary)]">
       <div className="glass-shell mx-auto max-w-md p-6">
         <div className="flex items-center justify-between">
-          <h1 className="brand-title text-3xl font-semibold">{mode === 'login' ? '登录' : '注册'}</h1>
-          <Link className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]" href="/">
+          <h1 className="brand-title text-3xl font-semibold">
+            {mode === 'login' ? '登录' : '注册'}
+          </h1>
+          <Link
+            className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            href="/"
+          >
             返回首页
           </Link>
         </div>
@@ -102,4 +108,3 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
     </div>
   );
 }
-

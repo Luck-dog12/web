@@ -29,5 +29,5 @@ supabase functions deploy get-playback
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_API_BASE_URL`（填 Supabase Functions 网关地址，建议以 `/functions/v1` 结尾）
+- `NEXT_PUBLIC_SUPABASE_FUNCTIONS_BASE_URL`（填 Supabase Functions 网关地址，建议以 `/functions/v1` 结尾）
 - `NEXT_PUBLIC_PAYPAL_CLIENT_ID`

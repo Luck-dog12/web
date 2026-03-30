@@ -24,5 +24,20 @@ export class TokenService {
 
     return { token, expiresAt: expiresAt.toISOString() };
   }
+
+  async validateToken(courseId: string, token: string) {
+    const playbackToken = await this.prisma.playbackToken.findUnique({
+      where: { token },
+      select: { token: true, courseId: true, expiresAt: true },
+    });
+    if (!playbackToken || playbackToken.courseId !== courseId) {
+      throw new ForbiddenException('Invalid playback token');
+    }
+    if (playbackToken.expiresAt.getTime() <= Date.now()) {
+      await this.prisma.playbackToken.delete({ where: { token } }).catch(() => undefined);
+      throw new ForbiddenException('Playback token expired');
+    }
+    return playbackToken;
+  }
 }
 

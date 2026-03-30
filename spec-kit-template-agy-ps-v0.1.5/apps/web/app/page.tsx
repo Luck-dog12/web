@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { headers } from 'next/headers';
-import { apiGet, CourseListItem, formatPrice } from '../lib/api';
+import { apiGet, CourseListItem, formatPrice, getCourseApiBaseUrl } from '../lib/api';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -10,10 +10,13 @@ export default async function Home() {
   let isAdmin = false;
   let isLoggedIn = false;
   let loadError = false;
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+  const apiBaseUrl = getCourseApiBaseUrl();
   const reqHeaders = await headers();
   const cookie = reqHeaders.get('cookie') ?? '';
-  const locale = /(?:^|;\s*)console_locale=(en-US|zh-CN)/.exec(cookie)?.[1] === 'en-US' ? 'en-US' : 'zh-CN';
+  const locale =
+    /(?:^|;\s*)console_locale=(en-US|zh-CN)/.exec(cookie)?.[1] === 'en-US'
+      ? 'en-US'
+      : 'zh-CN';
   const t =
     locale === 'en-US'
       ? {
@@ -49,13 +52,14 @@ export default async function Home() {
           s1: '120+ 课程',
           s2: '48 种料理体系',
           s3: '28k 学员',
-          loadError: '当前课程服务暂不可用，请稍后刷新重试。',
-          popular: 'Popular this week',
-          loved: 'Most Loved Courses',
-          global: 'Global',
-          allLevels: 'All Levels',
-          featuredSub: 'Course of the month',
+          loadError: '当前课程服务暂时不可用，请稍后刷新重试。',
+          popular: '本周热门',
+          loved: '最受欢迎的课程',
+          global: '全球',
+          allLevels: '所有难度',
+          featuredSub: '本月精选课程',
         };
+
   try {
     const meRes = await fetch(`${apiBaseUrl}/auth/me`, {
       headers: cookie ? { cookie } : undefined,
@@ -67,6 +71,7 @@ export default async function Home() {
       isLoggedIn = true;
     }
   } catch {}
+
   try {
     const data = await apiGet<{ courses: CourseListItem[] }>('/catalog/courses', {
       cache: 'force-cache',
@@ -153,14 +158,19 @@ export default async function Home() {
                   <div className="mb-3 flex items-center justify-between">
                     <span className="status-pill">{c.cuisine ?? t.global}</span>
                     <span className="text-xs font-semibold text-[var(--accent-amber)]">
-                      {formatPrice(c.priceCentsUsd ?? c.priceCents, 'USD')} / {formatPrice(c.priceCentsEur ?? c.priceCents, 'EUR')}
+                      {formatPrice(c.priceCentsUsd ?? c.priceCents, 'USD')} /{' '}
+                      {formatPrice(c.priceCentsEur ?? c.priceCents, 'EUR')}
                     </span>
                   </div>
                   <div className="brand-title text-2xl leading-tight transition group-hover:text-[var(--accent-amber)]">
                     {c.title}
                   </div>
-                  <div className="mt-2 line-clamp-2 text-sm text-[var(--text-secondary)]">{c.description}</div>
-                  <div className="mt-4 text-xs text-[var(--text-muted)]">{c.difficulty ?? t.allLevels}</div>
+                  <div className="mt-2 line-clamp-2 text-sm text-[var(--text-secondary)]">
+                    {c.description}
+                  </div>
+                  <div className="mt-4 text-xs text-[var(--text-muted)]">
+                    {c.difficulty ?? t.allLevels}
+                  </div>
                 </Link>
               ))}
             </div>

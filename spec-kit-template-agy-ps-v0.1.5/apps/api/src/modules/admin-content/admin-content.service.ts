@@ -1,13 +1,23 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { CloudflareStreamService } from '../../common/cloudflare-stream/cloudflare-stream.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateCourseDto } from './dto/create-course.dto';
+import { CreateStreamDirectUploadDto } from './dto/create-stream-direct-upload.dto';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
 
 @Injectable()
 export class AdminContentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudflareStreamService: CloudflareStreamService,
+  ) {}
 
   private normalizeEmail(input: string) {
     return input
@@ -53,7 +63,18 @@ export class AdminContentService {
         priceCentsUsd: true,
         priceCentsEur: true,
         currency: true,
-        videos: { select: { id: true, title: true, durationSeconds: true, sourceUrl: true } },
+        videos: {
+          select: {
+            id: true,
+            title: true,
+            durationSeconds: true,
+            cfStreamVideoId: true,
+            playbackPolicy: true,
+            streamStatus: true,
+            streamReadyToStream: true,
+            streamThumbnailUrl: true,
+          },
+        },
       },
     });
   }
@@ -85,28 +106,160 @@ export class AdminContentService {
   }
 
   async createVideo(courseId: string, dto: CreateVideoDto) {
-    const course = await this.prisma.course.findUnique({
-      where: { id: courseId },
-      select: { id: true },
-    });
-    if (!course) throw new NotFoundException();
+    await this.requireCourse(courseId);
+
+    const playbackPolicy = this.cloudflareStreamService.normalizePlaybackPolicy(
+      dto.playbackPolicy,
+    );
+    const existingStreamId = dto.cfStreamVideoId?.trim();
+    const importUrl = dto.importUrl?.trim();
+
+    if (existingStreamId) {
+      const streamData = await this.buildCloudflareVideoData(
+        existingStreamId,
+        dto.durationSeconds,
+        playbackPolicy,
+      );
+      return this.prisma.video.create({
+        data: {
+          courseId,
+          title: dto.title,
+          ...streamData,
+        },
+        select: { id: true },
+      });
+    }
+
+    if (!importUrl) {
+      throw new BadRequestException(
+        'Provide either cfStreamVideoId or importUrl.',
+      );
+    }
+
+    const imported = await this.cloudflareStreamService.copyFromUrl(importUrl);
+    await this.cloudflareStreamService.configureVideo(
+      imported.uid,
+      playbackPolicy,
+    );
+
     return this.prisma.video.create({
       data: {
-        courseId: course.id,
+        courseId,
         title: dto.title,
-        sourceUrl: dto.sourceUrl,
-        durationSeconds: dto.durationSeconds ?? null,
+        cfStreamVideoId: imported.uid,
+        playbackPolicy,
+        durationSeconds: dto.durationSeconds ?? imported.durationSeconds,
+        streamStatus: imported.status,
+        streamReadyToStream: imported.readyToStream,
+        streamThumbnailUrl: imported.thumbnailUrl,
       },
       select: { id: true },
     });
   }
 
+  async createStreamDirectUpload(
+    courseId: string,
+    dto: CreateStreamDirectUploadDto,
+  ) {
+    await this.requireCourse(courseId);
+
+    const playbackPolicy = this.cloudflareStreamService.normalizePlaybackPolicy(
+      dto.playbackPolicy,
+    );
+    const upload = await this.cloudflareStreamService.createDirectUpload({
+      durationSeconds: dto.durationSeconds,
+    });
+
+    const video = await this.prisma.video.create({
+      data: {
+        courseId,
+        title: dto.title,
+        cfStreamVideoId: upload.uid,
+        playbackPolicy,
+        durationSeconds: dto.durationSeconds ?? null,
+        streamStatus: 'pendingupload',
+        streamReadyToStream: false,
+      },
+      select: { id: true, cfStreamVideoId: true },
+    });
+
+    return {
+      video,
+      uploadUrl: upload.uploadUrl,
+    };
+  }
+
   async updateVideo(videoId: string, dto: UpdateVideoDto) {
-    await this.prisma.video.findUniqueOrThrow({ where: { id: videoId }, select: { id: true } });
+    const existing = await this.prisma.video.findUniqueOrThrow({
+      where: { id: videoId },
+      select: {
+        id: true,
+        cfStreamVideoId: true,
+        durationSeconds: true,
+        playbackPolicy: true,
+      },
+    });
+
+    const playbackPolicy = dto.playbackPolicy
+      ? this.cloudflareStreamService.normalizePlaybackPolicy(
+          dto.playbackPolicy,
+        )
+      : existing.playbackPolicy;
+
+    let cloudflareUpdate = {};
+    if (existing.cfStreamVideoId && dto.playbackPolicy) {
+      cloudflareUpdate = await this.buildCloudflareVideoData(
+        existing.cfStreamVideoId,
+        dto.durationSeconds ?? existing.durationSeconds,
+        playbackPolicy,
+      );
+    }
+
     return this.prisma.video.update({
       where: { id: videoId },
-      data: dto,
+      data: {
+        ...(dto.title !== undefined ? { title: dto.title } : {}),
+        ...(dto.durationSeconds !== undefined
+          ? { durationSeconds: dto.durationSeconds }
+          : {}),
+        ...(dto.playbackPolicy ? { playbackPolicy } : {}),
+        ...cloudflareUpdate,
+      },
       select: { id: true },
+    });
+  }
+
+  async syncVideoStream(videoId: string) {
+    const video = await this.prisma.video.findUniqueOrThrow({
+      where: { id: videoId },
+      select: {
+        id: true,
+        cfStreamVideoId: true,
+        durationSeconds: true,
+        playbackPolicy: true,
+      },
+    });
+
+    if (!video.cfStreamVideoId) {
+      return { id: video.id };
+    }
+
+    const streamData = await this.buildCloudflareVideoData(
+      video.cfStreamVideoId,
+      video.durationSeconds,
+      video.playbackPolicy,
+    );
+
+    return this.prisma.video.update({
+      where: { id: video.id },
+      data: streamData,
+      select: {
+        id: true,
+        cfStreamVideoId: true,
+        playbackPolicy: true,
+        streamStatus: true,
+        streamReadyToStream: true,
+      },
     });
   }
 
@@ -118,5 +271,38 @@ export class AdminContentService {
   async deleteCourse(courseId: string) {
     await this.prisma.course.findUniqueOrThrow({ where: { id: courseId }, select: { id: true } });
     return this.prisma.course.delete({ where: { id: courseId }, select: { id: true } });
+  }
+
+  private async requireCourse(courseId: string) {
+    const course = await this.prisma.course.findUnique({
+      where: { id: courseId },
+      select: { id: true },
+    });
+    if (!course) throw new NotFoundException();
+    return course;
+  }
+
+  private async buildCloudflareVideoData(
+    cfStreamVideoId: string,
+    durationSeconds: number | null | undefined,
+    playbackPolicy: string,
+  ) {
+    const normalizedPolicy =
+      this.cloudflareStreamService.normalizePlaybackPolicy(playbackPolicy);
+
+    const video = await this.cloudflareStreamService.getVideo(cfStreamVideoId);
+    await this.cloudflareStreamService.configureVideo(
+      cfStreamVideoId,
+      normalizedPolicy,
+    );
+
+    return {
+      cfStreamVideoId: video.uid,
+      playbackPolicy: normalizedPolicy,
+      durationSeconds: durationSeconds ?? video.durationSeconds,
+      streamStatus: video.status,
+      streamReadyToStream: video.readyToStream,
+      streamThumbnailUrl: video.thumbnailUrl,
+    };
   }
 }

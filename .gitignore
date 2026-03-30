@@ -28,3 +28,4 @@ dev.db-journal
 spec-kit-template-agy-ps-v0.1.5/apps/api/src/generated/prisma/
 spec-kit-template-agy-ps-v0.1.5/.tmp-prisma-temp/
 
+.vercel

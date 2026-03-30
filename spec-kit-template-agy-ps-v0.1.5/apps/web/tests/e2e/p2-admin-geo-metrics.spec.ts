@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 test('admin page and metrics endpoint', async ({ request }) => {
-  const apiBaseUrl = process.env.API_BASE_URL ?? 'http://localhost:3001';
-  const webBaseUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
+  const apiBaseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:3001';
+  const webBaseUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3000';
 
   const adminPage = await request.get(`${webBaseUrl}/admin`);
   expect(adminPage.ok()).toBeTruthy();

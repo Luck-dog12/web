@@ -54,8 +54,13 @@ model Video {
   courseId        String
   title           String
   durationSeconds Int?
-  sourceUrl       String
+  cfStreamVideoId String?  @unique
+  playbackPolicy  String   @default("signed")
+  streamStatus    String?
+  streamReadyToStream Boolean @default(false)
+  streamThumbnailUrl String?
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   course          Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 

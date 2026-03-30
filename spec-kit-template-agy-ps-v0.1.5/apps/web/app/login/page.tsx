@@ -1,4 +1,5 @@
 import { LoginForm } from './login-form';
+import { sanitizeNextPath } from '../../lib/navigation/safe-next-path';
 
 export default async function LoginPage({
   searchParams,
@@ -7,7 +8,7 @@ export default async function LoginPage({
 }) {
   const params = (await searchParams) ?? {};
   const nextValue = params.next;
-  const nextPath = Array.isArray(nextValue) ? nextValue[0] : nextValue ?? '/';
+  const nextPath = sanitizeNextPath(Array.isArray(nextValue) ? nextValue[0] : nextValue, '/');
   return <LoginForm nextPath={nextPath} />;
 }
 

@@ -6,6 +6,11 @@ export class CatalogService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
+    const seedOnBoot = process.env.SEED_DEMO_CATALOG_ON_BOOT;
+    const shouldSeedDemoCatalog = seedOnBoot === 'true';
+    if (!shouldSeedDemoCatalog) return;
+    const demoStreamVideoId = process.env.SEED_DEMO_STREAM_VIDEO_ID?.trim();
+
     const count = await this.prisma.course.count();
     if (count > 0) return;
 
@@ -20,16 +25,22 @@ export class CatalogService implements OnModuleInit {
         priceCentsEur: 1799,
         currency: 'USD',
         coverImageUrl: null,
-        videos: {
-          create: [
-            {
-              title: 'Introduction',
-              durationSeconds: 420,
-              sourceUrl:
-                'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-            },
-          ],
-        },
+        ...(demoStreamVideoId
+          ? {
+              videos: {
+                create: [
+                  {
+                    title: 'Introduction',
+                    durationSeconds: 420,
+                    cfStreamVideoId: demoStreamVideoId,
+                    playbackPolicy: 'signed',
+                    streamStatus: 'ready',
+                    streamReadyToStream: true,
+                  },
+                ],
+              },
+            }
+          : {}),
       },
     });
 
@@ -44,16 +55,22 @@ export class CatalogService implements OnModuleInit {
         priceCentsEur: 2699,
         currency: 'USD',
         coverImageUrl: null,
-        videos: {
-          create: [
-            {
-              title: 'Dough & Rolling',
-              durationSeconds: 600,
-              sourceUrl:
-                'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-            },
-          ],
-        },
+        ...(demoStreamVideoId
+          ? {
+              videos: {
+                create: [
+                  {
+                    title: 'Dough & Rolling',
+                    durationSeconds: 600,
+                    cfStreamVideoId: demoStreamVideoId,
+                    playbackPolicy: 'signed',
+                    streamStatus: 'ready',
+                    streamReadyToStream: true,
+                  },
+                ],
+              },
+            }
+          : {}),
       },
     });
   }
@@ -91,6 +108,7 @@ export class CatalogService implements OnModuleInit {
         priceCentsEur: true,
         currency: true,
         coverImageUrl: true,
+        isPublished: true,
         videos: {
           select: {
             id: true,
@@ -100,7 +118,8 @@ export class CatalogService implements OnModuleInit {
         },
       },
     });
-    if (!course) throw new NotFoundException();
-    return course;
+    if (!course || !course.isPublished) throw new NotFoundException();
+    const { isPublished: _isPublished, ...publicCourse } = course;
+    return publicCourse;
   }
 }

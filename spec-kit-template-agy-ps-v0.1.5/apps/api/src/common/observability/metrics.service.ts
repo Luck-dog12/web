@@ -32,7 +32,6 @@ export class MetricsService {
 
   trackPlaybackStart(courseId: string) {
     this.metrics.playbackStarted += 1;
-    this.metrics.retentionSignals += 1;
     this.metrics.playbackQualitySamples.push({
       courseId,
       variant: 'started',

@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } fro
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { CreateCourseDto } from './dto/create-course.dto';
+import { CreateStreamDirectUploadDto } from './dto/create-stream-direct-upload.dto';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
@@ -51,10 +52,26 @@ export class AdminContentController {
     return this.adminContentService.createVideo(courseId, dto);
   }
 
+  @Post('courses/:courseId/videos/direct-upload')
+  async createVideoDirectUpload(
+    @Req() req: Request,
+    @Param('courseId') courseId: string,
+    @Body() dto: CreateStreamDirectUploadDto,
+  ) {
+    await this.adminContentService.assertAdmin(req.session.userId!);
+    return this.adminContentService.createStreamDirectUpload(courseId, dto);
+  }
+
   @Patch('videos/:videoId')
   async updateVideo(@Req() req: Request, @Param('videoId') videoId: string, @Body() dto: UpdateVideoDto) {
     await this.adminContentService.assertAdmin(req.session.userId!);
     return this.adminContentService.updateVideo(videoId, dto);
+  }
+
+  @Post('videos/:videoId/sync-stream')
+  async syncVideoStream(@Req() req: Request, @Param('videoId') videoId: string) {
+    await this.adminContentService.assertAdmin(req.session.userId!);
+    return this.adminContentService.syncVideoStream(videoId);
   }
 
   @Delete('videos/:videoId')

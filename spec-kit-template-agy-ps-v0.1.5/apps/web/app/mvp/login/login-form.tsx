@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import { getSupabaseBrowserClient } from '../../../lib/mvp/supabase-client';
+import { sanitizeNextPath } from '../../../lib/navigation/safe-next-path';
 
 export function MvpLoginForm({ nextPath }: { nextPath: string }) {
   const router = useRouter();
@@ -25,12 +26,12 @@ export function MvpLoginForm({ nextPath }: { nextPath: string }) {
       if (mode === 'register') {
         const signUpRes = await supabase.auth.signUp({ email, password });
         if (signUpRes.error) throw signUpRes.error;
-        setMessage('注册成功，请登录后继续');
+        setMessage('注册成功，请登录后继续。');
         setMode('login');
       } else {
         const signInRes = await supabase.auth.signInWithPassword({ email, password });
         if (signInRes.error) throw signInRes.error;
-        router.replace(nextPath);
+        router.replace(sanitizeNextPath(nextPath, '/mvp/videos'));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : '操作失败');
@@ -43,7 +44,9 @@ export function MvpLoginForm({ nextPath }: { nextPath: string }) {
     <div className="min-h-screen bg-[var(--bg-base)] px-6 py-10 text-[var(--text-primary)]">
       <div className="mx-auto max-w-md glass-shell p-6">
         <h1 className="text-2xl font-semibold">{mode === 'login' ? '登录' : '注册'}</h1>
-        <p className="mt-2 text-sm text-[var(--text-secondary)]">MVP 支付链路使用 Supabase Auth。</p>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          MVP 支付链路使用 Supabase Auth。
+        </p>
         <form className="mt-6 space-y-3" onSubmit={submit}>
           <input
             type="email"
@@ -80,7 +83,10 @@ export function MvpLoginForm({ nextPath }: { nextPath: string }) {
           >
             {mode === 'login' ? '没有账号？去注册' : '已有账号？去登录'}
           </button>
-          <Link href="/mvp/videos" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+          <Link
+            href="/mvp/videos"
+            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+          >
             返回列表
           </Link>
         </div>

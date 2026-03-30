@@ -3,7 +3,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 @Injectable()
@@ -46,19 +46,29 @@ export class AuthService {
   }
 
   async register(email: string, password: string) {
-    const existing = await this.prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = this.normalizeEmail(email);
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ email: normalizedEmail }, { email }],
+      },
+    });
     if (existing) throw new BadRequestException('Email already in use');
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await this.prisma.user.create({
-      data: { email, passwordHash },
+      data: { email: normalizedEmail, passwordHash },
       select: { id: true, email: true, createdAt: true },
     });
     return user;
   }
 
   async login(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = this.normalizeEmail(email);
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ email: normalizedEmail }, { email }],
+      },
+    });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const ok = await bcrypt.compare(password, user.passwordHash);
@@ -74,7 +84,11 @@ export class AuthService {
     });
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, passwordHash: true },

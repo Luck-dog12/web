@@ -23,8 +23,20 @@ type GetPlaybackResponse = {
 };
 
 function getFunctionsBaseUrl() {
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!apiBase) throw new Error('NEXT_PUBLIC_API_BASE_URL is required');
+  const apiBase =
+    process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_BASE_URL ??
+    process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL ??
+    (process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? `${process.env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, '')}/functions/v1`
+      : undefined) ??
+    process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  if (!apiBase) {
+    throw new Error(
+      'NEXT_PUBLIC_SUPABASE_FUNCTIONS_BASE_URL, NEXT_PUBLIC_SUPABASE_URL, or NEXT_PUBLIC_API_BASE_URL is required',
+    );
+  }
+
   return apiBase.includes('/functions/v1') ? apiBase : `${apiBase}/functions/v1`;
 }
 

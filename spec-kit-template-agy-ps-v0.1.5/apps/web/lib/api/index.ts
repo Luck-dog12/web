@@ -1,3 +1,5 @@
+export type VideoPlaybackPolicy = 'public' | 'signed';
+
 export type CourseListItem = {
   id: string;
   title: string;
@@ -24,9 +26,22 @@ export type AdminCourse = CourseListItem & {
   videos: Array<{
     id: string;
     title: string;
-    sourceUrl: string;
+    cfStreamVideoId: string | null;
+    playbackPolicy: VideoPlaybackPolicy;
+    streamStatus: string | null;
+    streamReadyToStream: boolean;
+    streamThumbnailUrl: string | null;
     durationSeconds: number | null;
   }>;
+};
+
+export type PlaybackSourceResponse = {
+  provider: 'cloudflare-stream';
+  hlsUrl: string;
+  dashUrl: string;
+  iframeUrl: string;
+  thumbnailUrl: string | null;
+  playbackPolicy: VideoPlaybackPolicy;
 };
 
 export function formatPrice(cents: number, currency: 'USD' | 'EUR') {
@@ -37,14 +52,32 @@ export function formatPrice(cents: number, currency: 'USD' | 'EUR') {
   }).format(cents / 100);
 }
 
-function getApiBaseUrl() {
-  const url = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!url) throw new Error('NEXT_PUBLIC_API_BASE_URL is required');
-  return url;
+function normalizeBaseUrl(url: string) {
+  return url.endsWith('/') ? url.slice(0, -1) : url;
+}
+
+function resolveServerRelativeApiUrl(url: string) {
+  if (!url.startsWith('/') || typeof window !== 'undefined') return url;
+
+  const originHost = process.env.VERCEL_URL ?? process.env.WEB_BASE_URL?.replace(/^https?:\/\//, '');
+  if (!originHost) return url;
+
+  return new URL(url, `https://${originHost}`).toString();
+}
+
+export function getCourseApiBaseUrl() {
+  const url =
+    process.env.API_URL ??
+    process.env.NEXT_PUBLIC_APP_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_API_URL ??
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    'http://localhost:3001';
+
+  return normalizeBaseUrl(resolveServerRelativeApiUrl(url));
 }
 
 export async function apiGet<T>(path: string, init?: RequestInit) {
-  const url = `${getApiBaseUrl()}${path}`;
+  const url = `${getCourseApiBaseUrl()}${path}`;
   const res = await fetch(url, {
     ...init,
     headers: {
@@ -59,7 +92,7 @@ export async function apiGet<T>(path: string, init?: RequestInit) {
 }
 
 export async function apiPost<T>(path: string, body?: unknown, init?: RequestInit) {
-  const url = `${getApiBaseUrl()}${path}`;
+  const url = `${getCourseApiBaseUrl()}${path}`;
   const res = await fetch(url, {
     method: 'POST',
     ...init,
@@ -75,7 +108,7 @@ export async function apiPost<T>(path: string, body?: unknown, init?: RequestIni
 }
 
 export async function apiPatch<T>(path: string, body?: unknown, init?: RequestInit) {
-  const url = `${getApiBaseUrl()}${path}`;
+  const url = `${getCourseApiBaseUrl()}${path}`;
   const res = await fetch(url, {
     method: 'PATCH',
     ...init,
@@ -91,7 +124,7 @@ export async function apiPatch<T>(path: string, body?: unknown, init?: RequestIn
 }
 
 export async function apiDelete<T>(path: string, init?: RequestInit) {
-  const url = `${getApiBaseUrl()}${path}`;
+  const url = `${getCourseApiBaseUrl()}${path}`;
   const res = await fetch(url, {
     method: 'DELETE',
     ...init,

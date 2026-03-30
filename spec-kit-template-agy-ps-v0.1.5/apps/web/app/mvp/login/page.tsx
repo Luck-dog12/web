@@ -1,4 +1,5 @@
 import { MvpLoginForm } from './login-form';
+import { sanitizeNextPath } from '../../../lib/navigation/safe-next-path';
 
 export default async function MvpLoginPage({
   searchParams,
@@ -7,6 +8,9 @@ export default async function MvpLoginPage({
 }) {
   const params = (await searchParams) ?? {};
   const nextValue = params.next;
-  const nextPath = Array.isArray(nextValue) ? nextValue[0] : nextValue ?? '/mvp/videos';
+  const nextPath = sanitizeNextPath(
+    Array.isArray(nextValue) ? nextValue[0] : nextValue,
+    '/mvp/videos',
+  );
   return <MvpLoginForm nextPath={nextPath} />;
 }

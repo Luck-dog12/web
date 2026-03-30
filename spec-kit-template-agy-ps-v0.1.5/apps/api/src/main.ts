@@ -11,13 +11,17 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { createRateLimitMiddleware } from './common/middleware/rate-limit';
 import { requestLogger } from './common/logger/request-logger';
 import { initSentry } from './common/observability/sentry';
+import { RedisSessionStore } from './common/redis/redis-session.store';
+import { RedisService } from './common/redis/redis.service';
 
 async function bootstrap() {
   const initCwd = process.env.INIT_CWD;
   const envCandidates = [
     path.resolve(process.cwd(), '.env'),
     path.resolve(process.cwd(), 'apps/api/.env'),
-    ...(initCwd ? [path.resolve(initCwd, '.env'), path.resolve(initCwd, 'apps/api/.env')] : []),
+    ...(initCwd
+      ? [path.resolve(initCwd, '.env'), path.resolve(initCwd, 'apps/api/.env')]
+      : []),
   ];
   const envPath = envCandidates.find((p) => fs.existsSync(p));
   if (envPath) loadEnv({ path: envPath });
@@ -27,6 +31,17 @@ async function bootstrap() {
   initSentry('api');
 
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  const redisService = app.get(RedisService);
+  await redisService.assertHealthy();
+  const redisClient = redisService.getClient();
+
+  if (env.isProduction && !redisClient) {
+    throw new Error('REDIS_URL is required in production for session storage');
+  }
+
+  if (env.secureCookies) {
+    app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  }
 
   app.use((_, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -45,12 +60,19 @@ async function bootstrap() {
     session({
       name: 'sid',
       secret: env.sessionSecret,
+      proxy: env.secureCookies,
       resave: false,
       saveUninitialized: false,
+      store: redisClient
+        ? new RedisSessionStore(redisClient, {
+            ttlSeconds: env.sessionTtlSeconds,
+          })
+        : undefined,
       cookie: {
         httpOnly: true,
         sameSite: 'lax',
-        secure: false,
+        secure: env.secureCookies,
+        maxAge: env.sessionTtlSeconds * 1000,
       },
     }),
   );

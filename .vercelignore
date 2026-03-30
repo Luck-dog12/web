@@ -1,0 +1,17 @@
+.trae
+.tooling
+frontend-design
+Microsoft
+spec-kit-template-agy-ps-v0.1.5/.tooling
+spec-kit-template-agy-ps-v0.1.5/.env
+spec-kit-template-agy-ps-v0.1.5/.env.example
+spec-kit-template-agy-ps-v0.1.5/.agent
+spec-kit-template-agy-ps-v0.1.5/.tmp-vercel-home
+spec-kit-template-agy-ps-v0.1.5/.tmp-playwright-results-224912
+spec-kit-template-agy-ps-v0.1.5/.api.log
+spec-kit-template-agy-ps-v0.1.5/.dev.err.log
+spec-kit-template-agy-ps-v0.1.5/.dev.out.log
+spec-kit-template-agy-ps-v0.1.5/.web.err.log
+spec-kit-template-agy-ps-v0.1.5/.web.out.log
+spec-kit-template-agy-ps-v0.1.5/node_modules
+spec-kit-template-agy-ps-v0.1.5/apps/api/dev.db
