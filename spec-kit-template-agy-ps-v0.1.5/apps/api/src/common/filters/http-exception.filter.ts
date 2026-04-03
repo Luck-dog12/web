@@ -33,6 +33,19 @@ export class HttpExceptionFilter implements ExceptionFilter {
             ? 'Internal Server Error'
             : 'Error';
 
+    const errorMessage =
+      exception instanceof Error ? exception.message : String(exception);
+    const errorStack = exception instanceof Error ? exception.stack : undefined;
+
+    console.error('[http-exception]', {
+      method: request.method,
+      path: request.originalUrl ?? request.url,
+      status,
+      message,
+      errorMessage,
+      errorStack,
+    });
+
     response.status(status).json({
       statusCode: status,
       message,
