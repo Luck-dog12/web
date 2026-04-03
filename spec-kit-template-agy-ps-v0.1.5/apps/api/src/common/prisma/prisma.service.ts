@@ -1,38 +1,33 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
-import path from 'node:path';
 import { getDatabaseUrl } from '../config/env';
 
 type GeneratedPrismaModule = typeof import('../../generated/prisma');
 
-function isMissingModuleError(error: unknown, request: string) {
+function isMissingModuleError(error: unknown) {
   return (
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
-    (error as NodeJS.ErrnoException).code === 'MODULE_NOT_FOUND' &&
-    error instanceof Error &&
-    error.message.includes(request)
+    (error as NodeJS.ErrnoException).code === 'MODULE_NOT_FOUND'
   );
 }
 
 function loadPrismaClient() {
-  const requests = [
-    '../../generated/prisma',
-    path.resolve(__dirname, '../../../../src/generated/prisma'),
-  ];
-  let lastError: unknown;
-
-  for (const request of requests) {
-    try {
-      return (require(request) as GeneratedPrismaModule).PrismaClient;
-    } catch (error) {
-      if (!isMissingModuleError(error, request)) throw error;
-      lastError = error;
-    }
+  try {
+    return (require('../../generated/prisma') as GeneratedPrismaModule)
+      .PrismaClient;
+  } catch (error) {
+    if (!isMissingModuleError(error)) throw error;
   }
 
-  throw lastError ?? new Error('Unable to load generated Prisma client');
+  try {
+    return (require('../../../../src/generated/prisma') as GeneratedPrismaModule)
+      .PrismaClient;
+  } catch (error) {
+    if (!isMissingModuleError(error)) throw error;
+    throw new Error('Unable to load generated Prisma client');
+  }
 }
 
 const PrismaClient = loadPrismaClient();

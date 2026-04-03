@@ -15,8 +15,11 @@
     "db:migrate:deploy": "npm run prisma:migrate:deploy -w apps/api",
     "db:studio": "npm run prisma:studio -w apps/api",
     "build": "npm run build -w apps/web && npm run build -w apps/api",
+    "init:local-users": "npm run init:local-users -w apps/api",
     "lint": "npm run lint -w apps/web && npm run lint -w apps/api",
     "test": "npm run test -w apps/api",
+    "test:e2e:checkout": "powershell -ExecutionPolicy Bypass -File ./scripts/run-checkout-playback-e2e.ps1 -RuntimeMode dev",
+    "test:e2e:checkout:prod": "powershell -ExecutionPolicy Bypass -File ./scripts/run-checkout-playback-e2e.ps1 -RuntimeMode prod",
     "verify:p2-metrics": "node scripts/verify-p2-metrics.js"
   },
   "workspaces": [

@@ -16,13 +16,15 @@ import { RedisService } from './common/redis/redis.service';
 
 async function bootstrap() {
   const initCwd = process.env.INIT_CWD;
-  const envCandidates = [
-    path.resolve(process.cwd(), '.env'),
-    path.resolve(process.cwd(), 'apps/api/.env'),
-    ...(initCwd
-      ? [path.resolve(initCwd, '.env'), path.resolve(initCwd, 'apps/api/.env')]
-      : []),
-  ];
+  const envCandidates = Array.from(
+    new Set([
+      ...(initCwd
+        ? [path.resolve(initCwd, '.env'), path.resolve(initCwd, 'apps/api/.env')]
+        : []),
+      path.resolve(process.cwd(), '.env'),
+      path.resolve(process.cwd(), 'apps/api/.env'),
+    ]),
+  );
   const envPath = envCandidates.find((p) => fs.existsSync(p));
   if (envPath) loadEnv({ path: envPath });
 
@@ -98,4 +100,15 @@ async function bootstrap() {
 
   await app.listen(env.port);
 }
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('[api bootstrap] failed', {
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+    cwd: process.cwd(),
+    nodeEnv: process.env.NODE_ENV ?? 'development',
+    hasDatabaseUrl: Boolean(process.env.DATABASE_URL ?? process.env.DIRECT_URL),
+    hasRedisUrl: Boolean(process.env.REDIS_URL),
+    hasSessionSecret: Boolean(process.env.SESSION_SECRET),
+  });
+  process.exit(1);
+});

@@ -73,9 +73,9 @@ export class CloudflareStreamService {
     const initCwd = process.env.INIT_CWD;
     const envCandidates = Array.from(
       new Set([
+        ...(initCwd ? this.buildEnvCandidates(initCwd) : []),
         ...this.buildEnvCandidates(process.cwd()),
         ...this.buildEnvCandidates(__dirname),
-        ...(initCwd ? this.buildEnvCandidates(initCwd) : []),
       ]),
     );
     const mergedValues = new Map<string, string>();

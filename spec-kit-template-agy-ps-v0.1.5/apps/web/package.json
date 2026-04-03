@@ -7,7 +7,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:checkout": "playwright test tests/e2e/checkout-entitlement-playback.spec.ts"
   },
   "dependencies": {
     "@playwright/test": "^1.58.2",

@@ -2,6 +2,7 @@ import {
   BadGatewayException,
   BadRequestException,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import { MetricsService } from '../../common/observability/metrics.service';
 import { OrderService } from './order.service';
@@ -28,6 +29,8 @@ type PaypalOrderDetailsResponse = PaypalCaptureOrderResponse;
 
 @Injectable()
 export class PaymentService {
+  private readonly logger = new Logger(PaymentService.name);
+
   constructor(
     private readonly orderService: OrderService,
     private readonly metricsService: MetricsService,
@@ -93,7 +96,12 @@ export class PaymentService {
     let accessToken: string;
     try {
       accessToken = await this.paypalService.createAccessToken();
-    } catch {
+    } catch (error) {
+      this.logger.error('Failed to create PayPal access token', {
+        orderId: order.id,
+        courseId: params.courseId,
+        message: error instanceof Error ? error.message : String(error),
+      });
       await this.failOrder(order.id);
       return {
         orderId: order.id,
@@ -132,6 +140,12 @@ export class PaymentService {
       .catch(() => ({}))) as PaypalCreateOrderResponse;
 
     if (!createRes.ok || !createData.id) {
+      this.logger.error('Failed to create PayPal checkout order', {
+        orderId: order.id,
+        courseId: params.courseId,
+        status: createRes.status,
+        response: createData,
+      });
       await this.failOrder(order.id);
       return {
         orderId: order.id,
@@ -144,6 +158,11 @@ export class PaymentService {
       (link) => link.rel === 'approve',
     )?.href;
     if (!approveLink) {
+      this.logger.error('PayPal checkout response is missing approve link', {
+        orderId: order.id,
+        courseId: params.courseId,
+        response: createData,
+      });
       await this.failOrder(order.id);
       return {
         orderId: order.id,

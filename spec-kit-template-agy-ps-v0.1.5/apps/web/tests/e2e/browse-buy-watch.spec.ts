@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 function getProviderOrderId(redirectUrl: string) {
   try {
@@ -8,9 +8,9 @@ function getProviderOrderId(redirectUrl: string) {
   }
 }
 
-test('browse → checkout handoff', async ({ request }) => {
-  const apiBaseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:3001';
-  const webBaseUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3000';
+test('browse 鈫?checkout handoff', async ({ request }) => {
+  const apiBaseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:3401';
+  const webBaseUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3400';
 
   const health = await request.get(`${apiBaseUrl}/health`);
   expect(health.ok()).toBeTruthy();
