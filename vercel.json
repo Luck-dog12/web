@@ -7,12 +7,11 @@
       "framework": "nextjs"
     },
     "api": {
-      "entrypoint": "spec-kit-template-agy-ps-v0.1.5/apps/api",
+      "entrypoint": "spec-kit-template-agy-ps-v0.1.5/apps/api/src/main.ts",
       "routePrefix": "/api",
-      "framework": "nestjs",
       "includeFiles": [
-        "spec-kit-template-agy-ps-v0.1.5/apps/api/src/generated/prisma/**/*",
         "spec-kit-template-agy-ps-v0.1.5/apps/api/node_modules/**/*",
+        "spec-kit-template-agy-ps-v0.1.5/apps/api/src/generated/prisma/**/*",
         "spec-kit-template-agy-ps-v0.1.5/apps/api/dist/src/generated/prisma/**/*"
       ]
     }

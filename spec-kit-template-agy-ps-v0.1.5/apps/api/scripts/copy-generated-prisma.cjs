@@ -5,7 +5,7 @@ const {
   readdirSync,
   statSync,
 } = require('node:fs');
-const { join } = require('node:path');
+const { dirname, join } = require('node:path');
 
 function unique(items) {
   return Array.from(new Set(items));
@@ -28,6 +28,24 @@ function buildCandidatePairs() {
     sourceDir: join(root, 'src', 'generated', 'prisma'),
     targetDir: join(root, 'dist', 'src', 'generated', 'prisma'),
   }));
+}
+
+function findAncestorWithFile(startDir, fileName) {
+  let current = startDir;
+
+  while (true) {
+    const candidate = join(current, fileName);
+    if (existsSync(candidate)) {
+      return current;
+    }
+
+    const parent = dirname(current);
+    if (parent === current) {
+      return null;
+    }
+
+    current = parent;
+  }
 }
 
 const candidatePairs = buildCandidatePairs();
@@ -69,3 +87,16 @@ function copyDirectory(source, target) {
 }
 
 copyDirectory(sourceDir, targetDir);
+
+if (process.env.VERCEL) {
+  const repoRoot =
+    findAncestorWithFile(__dirname, 'vercel.json') ??
+    findAncestorWithFile(process.cwd(), 'vercel.json');
+
+  if (repoRoot) {
+    const mirroredSourceDir = join(repoRoot, 'src', 'generated', 'prisma');
+    if (mirroredSourceDir !== sourceDir) {
+      copyDirectory(sourceDir, mirroredSourceDir);
+    }
+  }
+}

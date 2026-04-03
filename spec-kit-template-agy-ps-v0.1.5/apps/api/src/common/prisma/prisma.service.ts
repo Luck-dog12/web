@@ -19,13 +19,6 @@ function loadPrismaClient() {
       .PrismaClient;
   } catch (error) {
     if (!isMissingModuleError(error)) throw error;
-  }
-
-  try {
-    return (require('../../../../src/generated/prisma') as GeneratedPrismaModule)
-      .PrismaClient;
-  } catch (error) {
-    if (!isMissingModuleError(error)) throw error;
     throw new Error('Unable to load generated Prisma client');
   }
 }
@@ -40,8 +33,9 @@ export class PrismaService
   constructor() {
     const databaseUrl = getDatabaseUrl();
     process.env.DATABASE_URL = databaseUrl;
-    const adapter = new PrismaPg({ connectionString: databaseUrl });
-    super({ adapter });
+    super({
+      adapter: new PrismaPg({ connectionString: databaseUrl }),
+    });
   }
 
   async onModuleInit() {

@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "npm run prisma:generate && nest build",
-    "postbuild": "node scripts/copy-generated-prisma.cjs",
+    "postbuild": "node scripts/copy-generated-prisma.cjs && node scripts/vendor-runtime-deps.cjs",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "init:local-users": "node scripts/init-local-users.cjs",
     "start": "node --max-old-space-size=384 --max-semi-space-size=16 ../../node_modules/@nestjs/cli/bin/nest.js start",
