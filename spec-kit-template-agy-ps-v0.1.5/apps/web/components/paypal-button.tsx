@@ -98,7 +98,15 @@ export function PaypalButton({
 
   useEffect(() => {
     let cancelled = false;
+    let readyObserved = false;
     const selector = `#paypal-button-${buttonId}`;
+    let observer: MutationObserver | null = null;
+
+    const markReady = () => {
+      if (cancelled || readyObserved) return;
+      readyObserved = true;
+      setPhase('ready');
+    };
 
     async function mountButton() {
       setError(null);
@@ -109,6 +117,19 @@ export function PaypalButton({
       const container = document.querySelector<HTMLElement>(selector);
       if (!container) return;
       container.innerHTML = '';
+
+      if (container.childElementCount > 0) {
+        markReady();
+      } else {
+        observer = new MutationObserver(() => {
+          if (container.childElementCount > 0) {
+            observer?.disconnect();
+            observer = null;
+            markReady();
+          }
+        });
+        observer.observe(container, { childList: true, subtree: true });
+      }
 
       await window.paypal
         .Buttons({
@@ -129,6 +150,7 @@ export function PaypalButton({
           onError: (nextError) => handleSdkError(nextError),
         })
         .render(selector);
+      markReady();
     }
 
     void mountButton().catch((nextError) => {
@@ -138,6 +160,7 @@ export function PaypalButton({
 
     return () => {
       cancelled = true;
+      observer?.disconnect();
       const container = document.querySelector<HTMLElement>(selector);
       if (container) container.innerHTML = '';
     };

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -115,6 +116,7 @@ export class AdminContentService {
     const importUrl = dto.importUrl?.trim();
 
     if (existingStreamId) {
+      await this.assertStreamIdNotAttached(existingStreamId);
       const streamData = await this.buildCloudflareVideoData(
         existingStreamId,
         dto.durationSeconds,
@@ -136,7 +138,27 @@ export class AdminContentService {
       );
     }
 
-    const imported = await this.cloudflareStreamService.copyFromUrl(importUrl);
+    if (this.isCloudflarePlaybackUrl(importUrl)) {
+      throw new BadRequestException(
+        'Import URL must be the original source video file URL. Cloudflare Stream playback URLs such as video.mpd, video.m3u8, or iframe links cannot be imported again.',
+      );
+    }
+
+    let imported;
+    try {
+      imported = await this.cloudflareStreamService.copyFromUrl(importUrl);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        message.includes('could not determine the size of the file') ||
+        message.includes('supports HEAD or GET range requests')
+      ) {
+        throw new BadRequestException(
+          'Import URL must point to a directly downloadable source file. The current URL does not expose the file size or byte-range access required by Cloudflare Stream imports.',
+        );
+      }
+      throw error;
+    }
     await this.cloudflareStreamService.configureVideo(
       imported.uid,
       playbackPolicy,
@@ -280,6 +302,40 @@ export class AdminContentService {
     });
     if (!course) throw new NotFoundException();
     return course;
+  }
+
+  private isCloudflarePlaybackUrl(url: string) {
+    try {
+      const parsed = new URL(url);
+      return (
+        parsed.hostname.endsWith('cloudflarestream.com') &&
+        /\/(iframe|manifest\/video\.(m3u8|mpd))$/i.test(parsed.pathname)
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  private async assertStreamIdNotAttached(cfStreamVideoId: string) {
+    const existing = await this.prisma.video.findFirst({
+      where: { cfStreamVideoId },
+      select: {
+        id: true,
+        title: true,
+        course: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) return;
+
+    throw new ConflictException(
+      `This Cloudflare Stream ID is already attached to video "${existing.title}" in course "${existing.course.title}".`,
+    );
   }
 
   private async buildCloudflareVideoData(

@@ -2,10 +2,9 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { PaypalButton } from '../../../components/paypal-button';
+import { useEffect, useMemo, useState } from 'react';
 import { apiGet, apiPost, CourseDetail, formatPrice } from '../../../lib/api';
-import { extractPaypalOrderId, getRuntimePaypalClientId } from '../../../lib/paypal/config';
+import { getRuntimePaypalClientId } from '../../../lib/paypal/config';
 
 type CheckoutResponse = {
   orderId: string;
@@ -13,16 +12,10 @@ type CheckoutResponse = {
   redirectUrl: string;
 };
 
-type CaptureResponse = {
-  status: 'paid';
-};
-
 export default function CoursePage() {
   const router = useRouter();
   const params = useParams<{ courseId: string }>();
   const courseId = useMemo(() => params.courseId, [params.courseId]);
-
-  const pendingOrderIdRef = useRef<string | null>(null);
 
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [has, setHas] = useState<boolean | null>(null);
@@ -37,10 +30,6 @@ export default function CoursePage() {
   async function track(name: string) {
     await apiPost('/metrics/event', { name, courseId }).catch(() => undefined);
   }
-
-  useEffect(() => {
-    pendingOrderIdRef.current = null;
-  }, [currency, courseId]);
 
   useEffect(() => {
     let canceled = false;
@@ -110,7 +99,6 @@ export default function CoursePage() {
         { provider: 'paypal', currency },
         { credentials: 'include' },
       );
-      pendingOrderIdRef.current = res.orderId;
       if (/^https?:\/\//i.test(res.redirectUrl)) {
         window.location.assign(res.redirectUrl);
       } else {
@@ -125,60 +113,6 @@ export default function CoursePage() {
     } finally {
       setBuying(false);
     }
-  }
-
-  async function createPaypalOrder() {
-    try {
-      await track(has ? 'repurchase' : 'purchase');
-      const res = await apiPost<CheckoutResponse>(
-        `/payment/checkout/${courseId}`,
-        { provider: 'paypal', currency },
-        { credentials: 'include' },
-      );
-      pendingOrderIdRef.current = res.orderId;
-      const providerOrderId = res.providerOrderId ?? extractPaypalOrderId(res.redirectUrl);
-      if (!providerOrderId) throw new Error('PayPal order id is missing');
-      return providerOrderId;
-    } catch (nextError) {
-      if (nextError instanceof Error && nextError.message.includes('Unauthorized')) {
-        router.push(`/login?next=${encodeURIComponent(`/courses/${courseId}`)}`);
-      }
-      throw nextError;
-    }
-  }
-
-  async function capturePaypalOrder(data: PaypalButtonsOnApproveData) {
-    const orderId = pendingOrderIdRef.current;
-    if (!orderId) throw new Error('Missing checkout order id');
-    if (!data.orderID) throw new Error('Missing PayPal order id');
-
-    try {
-      const result = await apiPost<CaptureResponse>(
-        '/payment/capture',
-        { orderId, providerOrderId: data.orderID },
-        { credentials: 'include' },
-      );
-      if (result.status !== 'paid') {
-        throw new Error('PayPal payment is still pending confirmation');
-      }
-
-      setHas(true);
-      router.push(`/watch/${courseId}`);
-    } catch (nextError) {
-      if (nextError instanceof Error && nextError.message.includes('Unauthorized')) {
-        router.push(`/login?next=${encodeURIComponent(`/courses/${courseId}`)}`);
-      }
-      throw nextError;
-    }
-  }
-
-  async function cancelPaypalOrder() {
-    const orderId = pendingOrderIdRef.current;
-    const query = new URLSearchParams({ courseId, reason: 'buyer_cancelled' });
-    if (orderId) {
-      query.set('orderId', orderId);
-    }
-    router.push(`/checkout/cancel?${query.toString()}`);
   }
 
   return (
@@ -250,28 +184,23 @@ export default function CoursePage() {
                       {'\u53bb\u89c2\u770b'}
                     </Link>
                   ) : paypalClientId ? (
-                    <div className="mt-3 w-[280px] max-w-full">
-                      <PaypalButton
-                        clientId={paypalClientId}
-                        currency={currency}
-                        createOrder={createPaypalOrder}
-                        onApprove={capturePaypalOrder}
-                        onCancel={cancelPaypalOrder}
-                        defaultErrorText={'PayPal \u8d2d\u4e70\u5931\u8d25'}
-                        loadingText={'\u6b63\u5728\u52a0\u8f7d PayPal \u6309\u94ae\u2026'}
-                        creatingText={'\u6b63\u5728\u521b\u5efa PayPal \u8ba2\u5355\u2026'}
-                        capturingText={
-                          '\u6b63\u5728\u786e\u8ba4\u652f\u4ed8\u6210\u529f\u72b6\u6001\u2026'
-                        }
-                        cancelledText={
-                          '\u4f60\u5df2\u53d6\u6d88 PayPal \u652f\u4ed8\uff0c\u53ef\u4ee5\u7a0d\u540e\u91cd\u8bd5\u3002'
-                        }
-                      />
+                    <div className="mt-3 w-[280px] max-w-full space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => void startRedirectCheckout()}
+                        disabled={buying}
+                        className="inline-flex w-full items-center justify-center rounded-xl border border-[#003087]/15 bg-[#FFC439] px-4 py-3 text-base font-semibold text-[#003087] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {buying ? 'Opening PayPal...' : 'PayPal'}
+                      </button>
+                      <div className="text-xs text-[var(--text-secondary)]">
+                        {'\u70b9\u51fb\u540e\u5c06\u8df3\u8f6c\u5230 PayPal \u4e2a\u4eba\u652f\u4ed8\u754c\u9762'}
+                      </div>
                     </div>
                   ) : (
                     <button
                       type="button"
-                      onClick={startRedirectCheckout}
+                      onClick={() => void startRedirectCheckout()}
                       disabled={buying}
                       className="action-primary mt-3 inline-flex px-3 py-2 text-sm font-medium"
                     >

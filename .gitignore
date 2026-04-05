@@ -38,5 +38,6 @@ spec-kit-template-agy-ps-v0.1.5/.tmp-prisma-temp/
 .tooling/
 Microsoft/
 output/
+.npm-cache/
 
 .vercel

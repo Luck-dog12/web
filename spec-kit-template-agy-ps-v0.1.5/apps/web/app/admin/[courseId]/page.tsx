@@ -303,6 +303,11 @@ export default function AdminCoursePage() {
     }
   }
 
+  async function logout() {
+    await apiPost('/auth/logout', undefined, { credentials: 'include' }).catch(() => undefined);
+    router.replace('/');
+  }
+
   return (
     <div className="min-h-screen bg-[var(--bg-base)] px-6 py-10 text-[var(--text-primary)]">
       <div className="mx-auto max-w-4xl space-y-6">
@@ -310,12 +315,21 @@ export default function AdminCoursePage() {
           <h1 className="brand-title text-4xl font-semibold">
             Course Content
           </h1>
-          <Link
-            href="/admin"
-            className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-          >
-            Back to admin
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/admin"
+              className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            >
+              Back to admin
+            </Link>
+            <button
+              type="button"
+              className="action-primary px-3 py-2 text-sm font-medium"
+              onClick={() => void logout()}
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         {error ? (
@@ -366,7 +380,7 @@ export default function AdminCoursePage() {
               </select>
               <input
                 className="field-input px-3 py-2 text-sm sm:col-span-2"
-                placeholder="Remote video URL to import into Stream"
+                placeholder="Remote source video URL (not Stream manifest / iframe URL)"
                 value={importUrl}
                 onChange={(event) => setImportUrl(event.target.value)}
               />
@@ -416,6 +430,11 @@ export default function AdminCoursePage() {
             <div className="mt-2 text-xs text-[var(--text-muted)]">
               Direct browser uploads use Cloudflare Stream direct upload. Keep
               files under the basic upload limit for this flow.
+            </div>
+            <div className="mt-1 text-xs text-[var(--text-muted)]">
+              Import URL expects the original downloadable video file. Playback
+              URLs like <code>video.mpd</code>, <code>video.m3u8</code>, or
+              <code>/iframe</code> from Cloudflare Stream cannot be imported.
             </div>
 
             <div className="mt-6 space-y-3">

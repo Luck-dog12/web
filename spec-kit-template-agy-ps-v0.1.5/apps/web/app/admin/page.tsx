@@ -130,6 +130,11 @@ export default function AdminPage() {
     setSaveMessage('设置已保存');
   }
 
+  async function logout() {
+    await apiPost('/auth/logout', undefined, { credentials: 'include' }).catch(() => undefined);
+    router.replace('/');
+  }
+
   function openDeleteCourse(course: AdminCourse) {
     setDeletingCourseId(course.id);
   }
@@ -202,6 +207,15 @@ export default function AdminPage() {
             onClick={() => setActiveTab('settings')}
           >
             偏好设置
+          </button>
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="action-primary px-3 py-2 text-sm font-medium"
+            onClick={() => void logout()}
+          >
+            Logout
           </button>
         </div>
         {error ? <div className="rounded-lg border border-[var(--danger)] bg-[rgba(200,122,122,0.12)] p-3 text-sm text-[var(--danger)]">{error}</div> : null}

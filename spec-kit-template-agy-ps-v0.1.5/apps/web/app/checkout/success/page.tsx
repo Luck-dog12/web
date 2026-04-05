@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { buildCheckoutPageHref, getSearchParam, requestCheckoutApi } from '../_lib';
+import { CheckoutSuccessAutoConfirm } from './auto-confirm';
 
 type SearchParamsRecord = Record<string, string | string[] | undefined>;
 
@@ -113,6 +114,12 @@ export default async function CheckoutSuccessPage({
       <div className="glass-shell mx-auto max-w-md p-6">
         <div className="brand-title text-4xl font-semibold">{state.title}</div>
         <div className="mt-2 text-sm text-[var(--text-secondary)]">{state.body}</div>
+        <CheckoutSuccessAutoConfirm
+          courseId={courseId}
+          enabled={state.kind !== 'granted'}
+          orderId={orderId}
+          providerOrderId={providerOrderId}
+        />
 
         <div className="mt-6 flex gap-3">
           {state.kind === 'granted' && courseId ? (

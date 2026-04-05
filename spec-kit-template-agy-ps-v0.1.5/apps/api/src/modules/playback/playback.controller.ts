@@ -7,12 +7,38 @@ import { TokenService } from './token.service';
 
 type PlaybackVariant = 'hls' | 'dash' | 'iframe';
 
-function getRequestBaseUrl(req: Request) {
+function normalizeBaseUrl(url: string) {
+  return url.endsWith('/') ? url.slice(0, -1) : url;
+}
+
+function getRequestOrigin(req: Request) {
   const forwardedProto = req.header('x-forwarded-proto')?.split(',')[0]?.trim();
   const forwardedHost = req.header('x-forwarded-host')?.split(',')[0]?.trim();
   const protocol = forwardedProto || req.protocol;
   const host = forwardedHost || req.get('host');
   return `${protocol}://${host}`;
+}
+
+function getDeliveryBaseUrl(req: Request) {
+  const configuredBaseUrl =
+    process.env.API_URL ??
+    process.env.NEXT_PUBLIC_APP_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_API_URL ??
+    process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  if (!configuredBaseUrl) {
+    return normalizeBaseUrl(getRequestOrigin(req));
+  }
+
+  if (/^https?:\/\//i.test(configuredBaseUrl)) {
+    return normalizeBaseUrl(configuredBaseUrl);
+  }
+
+  if (configuredBaseUrl.startsWith('/')) {
+    return `${normalizeBaseUrl(getRequestOrigin(req))}${normalizeBaseUrl(configuredBaseUrl)}`;
+  }
+
+  return normalizeBaseUrl(getRequestOrigin(req));
 }
 
 @Controller('playback')
@@ -39,7 +65,7 @@ export class PlaybackController {
       req.session.userId!,
       courseId,
       token.token,
-      getRequestBaseUrl(req),
+      getDeliveryBaseUrl(req),
     );
   }
 
@@ -71,6 +97,9 @@ export class PlaybackController {
       this.geoService.getBlockedCountries(),
     );
     res.setHeader('Cache-Control', 'private, no-store');
+    // Cloudflare Stream allowlists the embedding origin. Preserve the
+    // originating site on this redirect so the player can validate it.
+    res.setHeader('Referrer-Policy', 'origin');
     return res.redirect(302, redirectUrl);
   }
 }

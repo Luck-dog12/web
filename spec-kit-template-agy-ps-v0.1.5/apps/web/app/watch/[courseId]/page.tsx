@@ -126,6 +126,7 @@ export default function WatchPage() {
                   className="aspect-video w-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                   allowFullScreen
+                  referrerPolicy="origin"
                   title="Cloudflare Stream player"
                   onLoad={() => {
                     void track('playback_quality');
